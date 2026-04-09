@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CEBO Schedule</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#E8E8E6;--surface:#fff;--border:rgba(0,0,0,.10);--border2:rgba(0,0,0,.22);
+  --text:#141414;--text2:#5C5C5C;--text3:#9A9A9A;
+  --red:#C0282C;--red-lt:#FBECEC;--red-dk:#8C1A1E;
+  --charcoal:#2A2A2A;--gray:#6B6B6B;--gray-lt:#F0F0EE;
+  --green:#1D9E75;--amber:#B87015;
+  --r:8px;--rl:12px;
+  --mono:'SF Mono',Consolas,'Courier New',monospace;
+}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+input,textarea{font-family:inherit;color:var(--text)}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+.login-card{background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--rl);padding:2.25rem 2rem;width:100%;max-width:360px}
+.login-logo{font-size:24px;font-weight:700;letter-spacing:-.5px}.login-logo span{color:var(--red)}
+.login-sub{color:var(--text3);font-size:13px;margin-top:2px;margin-bottom:1.75rem}
+.f-group{margin-bottom:14px}
+.f-label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px;letter-spacing:.03em}
+.f-input{width:100%;padding:9px 12px;border:0.5px solid var(--border2);border-radius:var(--r);font-size:14px;background:var(--surface);outline:none;transition:border-color .15s}
+.f-input:focus{border-color:var(--red)}
+.btn-login{width:100%;padding:10px;background:var(--red);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:600;margin-top:6px}
+.btn-login:hover{background:var(--red-dk)}
+.login-err{color:var(--red);font-size:12px;margin-top:8px;display:none}
+#app{display:none;flex-direction:column;min-height:100vh}
+.app-hdr{background:var(--charcoal);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:20}
+.hdr-logo{font-size:15px;font-weight:700;letter-spacing:-.3px;color:#fff}.hdr-logo span{color:var(--red)}
+.hdr-week{display:flex;align-items:center;gap:6px}
+.week-arrow{border:0.5px solid rgba(255,255,255,.25);background:transparent;color:rgba(255,255,255,.8);border-radius:6px;padding:4px 9px;font-size:14px}
+.week-arrow:hover{background:rgba(255,255,255,.1)}
+.week-lbl{font-size:13px;color:rgba(255,255,255,.85);min-width:178px;text-align:center}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.hdr-user{font-size:13px;color:rgba(255,255,255,.6)}
+.btn-logout{border:0.5px solid rgba(255,255,255,.25);background:transparent;color:rgba(255,255,255,.7);border-radius:6px;padding:4px 10px;font-size:12px}
+.btn-logout:hover{background:rgba(255,255,255,.1)}
+.app-nav{background:var(--surface);border-bottom:0.5px solid var(--border);display:flex;padding:0 16px}
+.nav-tab{padding:11px 16px;font-size:13px;color:var(--text2);border:none;background:transparent;border-bottom:2.5px solid transparent;margin-bottom:-0.5px}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--red);border-bottom-color:var(--red);font-weight:500}
+.day-tabs{display:flex;gap:4px;padding:10px 16px;background:var(--surface);border-bottom:0.5px solid var(--border);overflow-x:auto}
+.day-tab{padding:6px 12px;border:0.5px solid var(--border);border-radius:var(--r);font-size:12px;background:transparent;color:var(--text2);white-space:nowrap}
+.day-tab.active{background:var(--red);color:#fff;border-color:var(--red);font-weight:500}
+.day-dot{display:inline-block;width:5px;height:5px;border-radius:50%;margin-left:4px;vertical-align:middle}
+.view-pad{padding:12px 16px 32px}
+.sched-grid{display:grid;grid-template-columns:200px minmax(0,1fr) 218px;gap:12px;align-items:start;margin-top:10px}
+.panel-lbl{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;margin-bottom:8px}
+.sec-lbl{font-size:11px;color:var(--text3);margin:8px 0 4px}
+.worker-row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:0.5px solid var(--border);border-radius:var(--r);cursor:pointer;margin-bottom:4px;background:var(--surface)}
+.worker-row:hover{border-color:var(--border2)}
+.worker-row.sel{border-color:var(--red);background:var(--red-lt)}
+.worker-row.dim{opacity:.35;pointer-events:none}
+.w-name{font-size:13px}.w-meta{font-size:11px;color:var(--text3)}
+.w-badge{font-size:10px;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle}
+.badge-boss{background:#141414;color:#fff}
+.badge-staff{background:var(--gray-lt);color:var(--gray)}
+.show-card{border:0.5px solid var(--border);border-radius:var(--rl);padding:12px;background:var(--surface);margin-bottom:8px;transition:border-color .2s}
+.show-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.show-code{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;letter-spacing:.04em}
+.show-nm{font-size:14px;font-weight:500}.show-ct{font-size:12px;color:var(--text2)}
+.show-workers{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.pill{display:flex;align-items:center;gap:3px;padding:4px 8px 4px 10px;border:0.5px solid var(--border);border-radius:20px;background:var(--bg);font-size:12px}
+.pill-x{border:none;background:none;cursor:pointer;color:var(--text3);font-size:15px;line-height:1;padding:0 0 0 2px}
+.plus-btn{width:26px;height:26px;border-radius:50%;border:1.5px dashed var(--border2);background:transparent;font-size:20px;display:inline-flex;align-items:center;justify-content:center;cursor:default;color:var(--text3);flex-shrink:0;line-height:1}
+.plus-btn.ready{border-color:var(--red);color:var(--red);cursor:pointer;border-style:solid}
+.needed-in{width:34px;font-size:12px;padding:2px 4px;border:0.5px solid var(--border);border-radius:4px;text-align:center;background:var(--surface)}
+.hint-box{margin-top:8px;padding:7px 10px;border:0.5px solid var(--red);border-radius:var(--r);background:var(--red-lt);font-size:12px;color:var(--red-dk)}
+.calc-card{border:0.5px solid var(--border);border-radius:var(--rl);padding:14px;background:var(--surface)}
+.calc-ttl{font-size:22px;font-weight:500;font-family:var(--mono)}
+.calc-div{height:0.5px;background:var(--border);margin:10px 0}
+.calc-row-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.calc-bar{height:4px;background:var(--bg);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.calc-bar-fill{height:100%;border-radius:2px}
+.zero-msg{margin-top:8px;text-align:center;font-size:12px;color:var(--green);border:0.5px solid var(--green);border-radius:var(--r);padding:5px}
+.avail-edit-wrap{margin-top:12px}
+.avail-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.avail-toggle{font-size:12px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--border2);background:transparent;color:var(--text2)}
+.avail-list{border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden;max-height:200px;overflow-y:auto;display:none}
+.avail-row{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-bottom:0.5px solid var(--border);font-size:13px}
+.avail-row:last-child{border-bottom:none}
+.avail-chk{width:16px;height:16px;cursor:pointer;accent-color:var(--red)}
+.notes-wrap{margin-top:10px;border:0.5px solid var(--border);border-radius:var(--rl);padding:10px 12px;background:var(--surface)}
+.notes-lbl{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.05em;margin-bottom:5px}
+.notes-ta{width:100%;border:none;background:transparent;resize:none;font-size:13px;font-family:var(--mono);outline:none;min-height:44px}
+.summary-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:12px 16px 0}
+.stat-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.stat-lbl{font-size:12px;color:var(--text2);margin-bottom:3px}
+.stat-val{font-size:22px;font-weight:500;font-family:var(--mono)}
+.show-section{border:0.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:10px;transition:border-color .2s}
+.show-sec-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--gray-lt);border-bottom:0.5px solid var(--border)}
+.budget-in{font-size:12px;font-family:var(--mono);padding:3px 8px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);width:130px}
+.show-hrs-ttl{font-size:13px;font-weight:500;font-family:var(--mono);min-width:44px;text-align:right}
+.pr-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pr-table th{font-size:11px;font-weight:600;color:var(--text3);padding:7px 12px;text-align:left;border-bottom:0.5px solid var(--border);letter-spacing:.04em;white-space:nowrap}
+.pr-table th.c{text-align:center}
+.pr-table td{font-size:13px;padding:7px 12px;border-bottom:0.5px solid var(--border);vertical-align:middle}
+.pr-table tr:last-child td{border-bottom:none}
+.pr-table tr:hover td{background:var(--gray-lt)}
+.time-in{font-size:13px;font-family:var(--mono);padding:3px 7px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);width:104px}
+.time-in:focus{outline:none;border-color:var(--red)}
+.note-in{font-size:12px;padding:3px 7px;border:0.5px solid transparent;border-radius:6px;background:transparent;width:100%}
+.note-in:focus{border-color:var(--border);background:var(--surface);outline:none}
+.s-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:8px;flex-shrink:0}
+.recon-wrap{border:0.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;background:var(--surface);margin:12px 16px 32px}
+.recon-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.prog-track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .3s}
+.prog-lbls{display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:var(--text3)}
+.report-wrap{padding:12px 16px 32px}
+.report-card{border:0.5px solid var(--border2);border-radius:var(--rl);overflow:hidden;background:var(--surface)}
+.report-hdr{padding:18px 22px;border-bottom:1px solid var(--border2)}
+.report-org{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--text3);margin-bottom:3px}
+.report-title{font-size:18px;font-weight:600}.report-meta{font-size:13px;color:var(--text2);margin-top:2px}
+.report-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+.report-ctrl{padding:10px 22px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.tog-group{display:flex;gap:3px}
+.tog-btn{font-size:12px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--border);background:transparent;color:var(--text2)}
+.tog-btn.on{background:var(--charcoal);color:#fff;border-color:var(--charcoal);font-weight:500}
+.btn-sm{font-size:12px;padding:5px 12px;border-radius:6px;border:0.5px solid var(--border2);background:transparent;color:var(--text2)}
+.btn-sm:hover{background:var(--gray-lt)}
+.btn-sm-red{font-size:12px;padding:5px 14px;border-radius:6px;border:none;background:var(--red);color:#fff;font-weight:500}
+.btn-sm-red:hover{background:var(--red-dk)}
+.r-table-wrap{overflow-x:auto}
+.r-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:580px}
+.r-table th{font-size:11px;font-weight:600;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border2);letter-spacing:.05em;white-space:nowrap}
+.r-table th.l{text-align:left}
+.r-table td{font-size:12px;padding:7px 10px;text-align:center;border-bottom:0.5px solid var(--border);font-family:var(--mono)}
+.r-table td.nm{text-align:left;font-family:system-ui,-apple-system,sans-serif;font-size:13px}
+.r-table td.cd{color:var(--text3);font-size:11px}
+.r-table td.tot{font-weight:600;border-left:0.5px solid var(--border2)}
+.r-table td.nil{color:var(--border2)}
+.r-table tr.sec-hd td{font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--text3);padding:9px 10px 5px;border-bottom:none;background:var(--gray-lt);font-family:system-ui,sans-serif}
+.r-table tr.grand td{font-weight:600;padding:9px 10px;border-top:1.5px solid var(--charcoal);border-bottom:none;background:var(--charcoal);color:#fff}
+.r-table tr.grand td.tot{font-size:15px;color:#fff}
+.r-table tr.grand td.nil{color:rgba(255,255,255,.25)}
+.report-fn{padding:10px 22px;border-top:0.5px solid var(--border);font-size:12px;color:var(--text3)}
+.cert-block{padding:16px 22px;border-top:0.5px solid var(--border);background:var(--gray-lt)}
+.cert-txt{font-size:12px;color:var(--text2);margin-bottom:14px}
+.cert-lines{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.cert-rule{height:0.5px;background:var(--border2)}
+.cert-lbl{font-size:11px;color:var(--text3);margin-top:5px}
+.empty-msg{text-align:center;padding:40px 0;color:var(--text3);font-size:14px}
+@media(max-width:680px){.sched-grid{grid-template-columns:1fr}.summary-row{grid-template-columns:repeat(2,1fr)}.report-metrics,.cert-lines{grid-template-columns:repeat(2,1fr)}.week-lbl{min-width:130px;font-size:12px}}
+@media print{.app-hdr,.app-nav,.day-tabs,.report-ctrl{display:none!important}body{background:#fff}}
+</style>
+</head>
+<body>
+
+<div id="login-screen" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">CEBO <span>Schedule</span></div>
+    <div class="login-sub">Scheduling &amp; Payroll</div>
+    <div class="f-group"><label class="f-label">Username</label><input class="f-input" id="l-user" type="text" placeholder="username" autocomplete="username"></div>
+    <div class="f-group"><label class="f-label">Password</label><input class="f-input" id="l-pass" type="password" placeholder="password" autocomplete="current-password"></div>
+    <button class="btn-login" onclick="doLogin()">Sign in</button>
+    <div class="login-err" id="l-err">Incorrect username or password.</div>
+  </div>
+</div>
+
+<div id="app">
+  <header class="app-hdr">
+    <div class="hdr-logo">CEBO <span>Schedule</span></div>
+    <div class="hdr-week">
+      <button class="week-arrow" onclick="changeWeek(-1)">&#8592;</button>
+      <span class="week-lbl" id="week-lbl"></span>
+      <button class="week-arrow" onclick="changeWeek(1)">&#8594;</button>
+    </div>
+    <div class="hdr-right">
+      <span class="hdr-user" id="hdr-user"></span>
+      <button class="btn-logout" onclick="doLogout()">Sign out</button>
+    </div>
+  </header>
+  <nav class="app-nav">
+    <button class="nav-tab active" id="nav-schedule" onclick="setView('schedule')">Schedule</button>
+    <button class="nav-tab" id="nav-payroll" onclick="setView('payroll')">Payroll</button>
+    <button class="nav-tab" id="nav-report" onclick="setView('report')">Report</button>
+  </nav>
+  <div id="view-root"></div>
+</div>
+
+<script>
+const USERS={jeremiah:{pw:'cebo1',name:'Jeremiah C.',card:'1725'},admin:{pw:'admin',name:'Admin',card:''}};
+const ROSTER=[
+  {id:'s1',name:'Cebulski, J.',type:'staff',badge:'boss',card:'1725',in0:'7:00'},
+  {id:'s2',name:'Mirando, M.',type:'staff',badge:'staff',card:'1074',in0:'8:00'},
+  {id:'s3',name:'Ward, S.',type:'staff',badge:'staff',card:'1253',in0:'8:00'},
+  {id:'s4',name:'Adams, C.',type:'staff',badge:'staff',card:'',in0:'8:00'},
+  {id:'s5',name:'Sefaj, M.',type:'staff',badge:'staff',card:'1582',in0:'8:00'},
+  {id:'s6',name:'Lange, J.',type:'staff',badge:'staff',card:'2780',in0:'8:00'},
+  {id:'s7',name:'Leftwich, J.',type:'staff',badge:'staff',card:'',in0:'8:00'},
+  {id:'c01',name:'Aloisio, A.',type:'casual',card:'3112',in0:'8:00'},
+  {id:'c02',name:'Arnold, P.',type:'casual',card:'3412',in0:'8:00'},
+  {id:'c03',name:'Blas, D.',type:'casual',card:'',in0:'8:00'},
+  {id:'c04',name:'Bonilla, D.',type:'casual',card:'2156',in0:'8:00'},
+  {id:'c05',name:'Bostic, C.',type:'casual',card:'',in0:'8:00'},
+  {id:'c06',name:'Brady, P.',type:'casual',card:'',in0:'8:00'},
+  {id:'c07',name:'Breedlove, M.',type:'casual',card:'1893',in0:'8:00'},
+  {id:'c08',name:'Breheny, R.',type:'casual',card:'4201',in0:'8:00'},
+  {id:'c09',name:'Buiza, B.',type:'casual',card:'',in0:'8:00'},
+  {id:'c10',name:'Byrne, J.',type:'casual',card:'',in0:'8:00'},
+  {id:'c11',name:'Cantalupo, J.',type:'casual',card:'',in0:'8:00'},
+  {id:'c12',name:'Carter, J.',type:'casual',card:'',in0:'8:00'},
+  {id:'c13',name:'Casey, W.',type:'casual',card:'3875',in0:'8:00'},
+  {id:'c14',name:'Cascio, C.',type:'casual',card:'',in0:'8:00'},
+  {id:'c15',name:'Clifford, B.',type:'casual',card:'2634',in0:'8:00'},
+  {id:'c16',name:'Colon, G.',type:'casual',card:'4058',in0:'9:00'},
+  {id:'c17',name:'Daly, J.',type:'casual',card:'3291',in0:'10:00'},
+  {id:'c18',name:'Gould, M.',type:'casual',card:'2847',in0:'8:00'},
+  {id:'c19',name:'Harvey, P.',type:'casual',card:'3563',in0:'8:00'},
+  {id:'c20',name:'Hughes, K.',type:'casual',card:'4122',in0:'9:00'},
+  {id:'c21',name:'Loughlin, T.',type:'casual',card:'1976',in0:'8:00'},
+  {id:'c22',name:'Malin, R.',type:'casual',card:'3744',in0:'10:00'},
+  {id:'c23',name:'Newman, F.',type:'casual',card:'2389',in0:'8:00'},
+  {id:'c24',name:'Perrone, A.',type:'casual',card:'4567',in0:'8:00'},
+  {id:'c25',name:'Williams, D.',type:'casual',card:'',in0:'8:00'},
+];
+const SHOWS=[
+  {id:'today',name:'Today Show',code:'TODA',color:'#C0282C',bg:'#FBECEC',tc:'#8C1A1E'},
+  {id:'fallon',name:'Fallon',code:'FALL',color:'#2A2A2A',bg:'#EBEBEB',tc:'#141414'},
+  {id:'snl',name:'SNL',code:'SNL',color:'#5C5C5C',bg:'#F2F2F2',tc:'#2A2A2A'},
+  {id:'gen',name:'General / Combo',code:'SOPS',color:'#888888',bg:'#F7F7F7',tc:'#555555'},
+];
+const DAYS=['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
+const wMap={};ROSTER.forEach(w=>wMap[w.id]=w);
+
+let S={user:null,we:null,day:'Mon',view:'schedule',sel:null,rF:'all'};
+const SK='cebo_v2';
+function load(){try{return JSON.parse(localStorage.getItem(SK)||'{}')}catch{return{}}}
+function save(d){localStorage.setItem(SK,JSON.stringify(d))}
+function getDay(we,day){const a=load();return(a[we]&&a[we][day])?a[we][day]:defDay();}
+function defDay(){const av={};ROSTER.filter(w=>w.type==='staff').forEach(w=>av[w.id]=true);return{av,asgn:{today:[],fallon:[],snl:[],gen:[]},out:{today:{},fallon:{},snl:{},gen:{}},bc:{},needed:{today:6,fallon:4,snl:6,gen:0},notes:{},dayNote:''};}
+function putDay(we,day,d){const a=load();if(!a[we])a[we]={};a[we][day]=d;save(a);}
+
+function weOf(date){const d=new Date(date);const df=(5-d.getDay()+7)%7;d.setDate(d.getDate()+df);return d.toISOString().split('T')[0];}
+function wLabel(we){const fr=new Date(we+'T12:00:00');const sa=new Date(fr);sa.setDate(sa.getDate()-6);const f=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});return`${f(sa)} \u2013 ${f(fr)}`;}
+function dayDate(we,day){const fr=new Date(we+'T12:00:00');const d=new Date(fr);d.setDate(d.getDate()+(DAYS.indexOf(day)-6));return d.toLocaleDateString('en-US',{month:'numeric',day:'numeric'});}
+function changeWeek(dir){const d=new Date(S.we+'T12:00:00');d.setDate(d.getDate()+dir*7);S.we=d.toISOString().split('T')[0];S.sel=null;renderAll();}
+
+function toM(t){if(!t)return null;const[h,m]=t.split(':').map(Number);return h*60+(m||0);}
+function hrs(i,o){if(!o||!i)return null;const d=(toM(o)-toM(i))/60;return d>0?Math.round(d*10)/10:null;}
+function fh(h){return h==null?'\u2014':h.toFixed(1)+'h';}
+function padT(t){if(!t)return'';const[h,m]=t.split(':');return h.padStart(2,'0')+':'+(m||'00').padStart(2,'0');}
+
+function doLogin(){
+  const u=document.getElementById('l-user').value.trim().toLowerCase();
+  const p=document.getElementById('l-pass').value;
+  const err=document.getElementById('l-err');
+  if(USERS[u]&&USERS[u].pw===p){
+    S.user={u,...USERS[u]};S.we=weOf(new Date());err.style.display='none';
+    document.getElementById('login-screen').style.display='none';
+    const app=document.getElementById('app');app.style.display='flex';app.style.flexDirection='column';
+    document.getElementById('hdr-user').textContent=USERS[u].name;renderAll();
+  }else{err.style.display='block';}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('login-screen').style.display!=='none')doLogin();});
+function doLogout(){S.user=null;document.getElementById('login-screen').style.display='flex';document.getElementById('app').style.display='none';}
+function setView(v){S.view=v;S.sel=null;['schedule','payroll','report'].forEach(x=>document.getElementById('nav-'+x).className='nav-tab'+(x===v?' active':''));renderAll();}
+function setDay(d){S.day=d;S.sel=null;renderAll();}
+
+function renderAll(){
+  document.getElementById('week-lbl').textContent=wLabel(S.we);
+  const r=document.getElementById('view-root');
+  if(S.view==='schedule')r.innerHTML=bSched();
+  else if(S.view==='payroll')r.innerHTML=bPayroll();
+  else r.innerHTML=bReport();
+}
+
+function dTabs(){
+  return DAYS.map(d=>{
+    const dd=getDay(S.we,d);
+    const pool=Object.keys(dd.av).filter(k=>dd.av[k]).length;
+    const asgd=new Set(Object.values(dd.asgn).flat()).size;
+    const dot=pool>0?`<span class="day-dot" style="background:${asgd===pool?'var(--green)':'var(--amber)'}"></span>`:'';
+    return`<button class="day-tab${d===S.day?' active':''}" onclick="setDay('${d}')">${d}&nbsp;<span style="font-size:10px;opacity:.65">${dayDate(S.we,d)}</span>${dot}</button>`;
+  }).join('');
+}
+
+function bSched(){
+  const D=getDay(S.we,S.day);
+  const aIds=new Set(Object.values(D.asgn).flat());
+  const staff=ROSTER.filter(w=>w.type==='staff'&&D.av[w.id]);
+  const cas=ROSTER.filter(w=>w.type==='casual'&&D.av[w.id]);
+  const pool=[...staff,...cas];
+  let totH=0,aH=0;const shH={};
+  pool.forEach(w=>{totH+=(hrs(w.in0,Object.values(D.out).reduce((f,o)=>f||o[w.id],null))||8);});
+  SHOWS.forEach(sh=>{const h=(D.asgn[sh.id]||[]).reduce((s,id)=>s+(hrs(wMap[id]?.in0,(D.out[sh.id]||{})[id])||8),0);shH[sh.id]=Math.round(h*10)/10;aH+=shH[sh.id];});
+  const rem=Math.max(0,Math.round((totH-aH)*10)/10);
+
+  const wRow=w=>{
+    const asgd=aIds.has(w.id);const isSel=S.sel===w.id;
+    const cls='worker-row'+(isSel?' sel':asgd?' dim':'');
+    const click=asgd?'':` onclick="selW('${w.id}')"`;
+    const badge=w.badge?`<span class="w-badge badge-${w.badge}">${w.badge}</span>`:'';
+    return`<div class="${cls}"${click}><div><div class="w-name">${w.name}${badge}</div><div class="w-meta">in ${w.in0}</div></div>${asgd?'<span style="font-size:10px;color:var(--text3)">assigned</span>':''}</div>`;
+  };
+
+  const cards=SHOWS.map(sh=>{
+    const ws=(D.asgn[sh.id]||[]).map(id=>wMap[id]).filter(Boolean);
+    const nd=D.needed?.[sh.id]||0;
+    const short=nd>0&&ws.length<nd;const full=nd>0&&ws.length>=nd;
+    const bc=full?'var(--green)':short&&ws.length>0?'var(--amber)':'var(--border)';
+    const pills=ws.map(w=>`<div class="pill"><span>${w.name.split(',')[0]}</span><button class="pill-x" onclick="unassign('${sh.id}','${w.id}')">&times;</button></div>`).join('');
+    const plus=S.sel?`<button class="plus-btn ready" onclick="doAssign('${sh.id}')">+</button>`:`<button class="plus-btn">+</button>`;
+    return`<div class="show-card" style="border-color:${bc}">
+      <div class="show-hd">
+        <div style="display:flex;align-items:center;gap:8px"><span class="show-code" style="background:${sh.bg};color:${sh.tc}">${sh.code}</span><span class="show-nm">${sh.name}</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><span class="show-ct" style="color:${short?'var(--amber)':'var(--text2)'}">${ws.length}${nd>0?'/'+nd:''} workers</span>${nd>0?`<input class="needed-in" type="number" min="0" max="30" value="${nd}" onchange="setNeeded('${sh.id}',this.value)">`:''}</div>
+      </div>
+      <div class="show-workers">${pills}${plus}</div>
+    </div>`;
+  }).join('');
+
+  const hint=S.sel?`<div class="hint-box">Tap <strong>+</strong> on a show to place ${wMap[S.sel]?.name?.split(',')[0]||''}</div>`:'';
+  const calcRows=SHOWS.map(sh=>{const h=shH[sh.id]||0;const pct=totH>0?Math.round(h/totH*100):0;return`<div><div class="calc-row-hd"><span style="font-size:12px;color:var(--text2)">${sh.name}</span><span style="font-size:13px;font-weight:500;font-family:var(--mono);color:${sh.color}">${h}</span></div><div class="calc-bar"><div class="calc-bar-fill" style="width:${pct}%;background:${sh.color}"></div></div></div>`;}).join('');
+  const casAll=ROSTER.filter(w=>w.type==='casual');
+  const avEdit=`<div class="avail-edit-wrap"><div class="avail-hd"><span class="panel-lbl" style="margin:0">Availability</span><button class="avail-toggle" onclick="toggleAP()">Edit</button></div><div class="avail-list" id="avail-list">${casAll.map(w=>`<div class="avail-row"><span>${w.name}</span><input type="checkbox" class="avail-chk"${D.av[w.id]?' checked':''} onchange="togAv('${w.id}',this.checked)"></div>`).join('')}</div></div>`;
+
+  return`<div class="day-tabs">${dTabs()}</div>
+  <div class="view-pad"><div class="sched-grid">
+    <div>
+      <div class="panel-lbl">Available today &middot; ${pool.length}</div>
+      ${staff.length?`<div class="sec-lbl">Staff</div>${staff.map(wRow).join('')}`:''}
+      ${cas.length?`<div class="sec-lbl">Available this week</div>${cas.map(wRow).join('')}`:''}
+      ${!pool.length?`<div class="empty-msg" style="padding:20px 0;text-align:left">No workers set.<br>Use Availability below.</div>`:''}
+      ${hint}${avEdit}
+    </div>
+    <div>${cards}<div class="notes-wrap"><div class="notes-lbl">Notes &amp; billing codes</div><textarea class="notes-ta" placeholder="Budget codes, extra work..." oninput="saveNote(this.value)">${D.dayNote||''}</textarea></div></div>
+    <div><div class="calc-card">
+      <div class="panel-lbl">Hour calculator</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span style="font-size:12px;color:var(--text2)">Pool total</span><span class="calc-ttl">${totH}<span style="font-size:13px;font-weight:400;color:var(--text3)"> hrs</span></span></div>
+      <div class="calc-div"></div>${calcRows}<div class="calc-div"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--text2)">Unassigned</span><span class="calc-ttl" style="font-size:20px;color:${rem===0?'var(--green)':rem<=16?'var(--amber)':'var(--text)'}">${rem}<span style="font-size:12px;font-weight:400;color:var(--text3)"> hrs</span></span></div>
+      ${rem===0&&pool.length?`<div class="zero-msg">All hours assigned</div>`:''}
+    </div></div>
+  </div></div>`;
+}
+
+function bPayroll(){
+  const D=getDay(S.we,S.day);
+  const allW=Object.values(D.asgn).flat();
+  let totW=0,logH=0,pend=0;
+  SHOWS.forEach(sh=>(D.asgn[sh.id]||[]).forEach(id=>{totW++;const h=hrs(wMap[id]?.in0,(D.out[sh.id]||{})[id]||null);if(h)logH+=h;else pend++;}));
+  logH=Math.round(logH*10)/10;
+  const totP=totW*8;const pct=totP?Math.round(logH/totP*100):0;
+  const stats=[{l:'Workers today',v:totW},{l:'Hours logged',v:logH+'h'},{l:'Pending out time',v:pend,w:pend>0},{l:'Avg per worker',v:totW-pend>0?(logH/(totW-pend)).toFixed(1)+'h':'—'}].map(c=>`<div class="stat-card"><div class="stat-lbl">${c.l}</div><div class="stat-val" style="color:${c.w?'var(--amber)':'var(--text)'}">${c.v}</div></div>`).join('');
+  if(!allW.length)return`<div class="day-tabs">${dTabs()}</div><div class="empty-msg" style="margin-top:32px">No workers scheduled for ${S.day}.<br>Go to Schedule to assign workers first.</div>`;
+  const secs=SHOWS.map(sh=>{
+    const ids=D.asgn[sh.id]||[];if(!ids.length)return'';
+    const bc=(D.bc||{})[sh.id]||'';let shH=0;
+    const rows=ids.map(id=>{
+      const w=wMap[id];if(!w)return'';
+      const outV=(D.out[sh.id]||{})[id]||null;const h=hrs(w.in0,outV);if(h)shH+=h;
+      const note=(D.notes||{})[id]||'';
+      return`<tr><td><span class="s-dot" style="background:${h?'var(--green)':'var(--amber)'}"></span>${w.name}${w.badge?`<span class="w-badge badge-${w.badge}" style="vertical-align:middle">${w.badge}</span>`:''}</td>
+        <td class="c" style="text-align:center;font-family:var(--mono);color:var(--text2)">${w.in0}</td>
+        <td style="text-align:center;padding:5px 8px"><input class="time-in" type="time" value="${padT(outV)}" onblur="setOut('${sh.id}','${id}',this.value)"></td>
+        <td style="text-align:center;font-family:var(--mono);color:${h?'var(--text)':'var(--text3)'}">${fh(h)}</td>
+        <td><input class="note-in" type="text" value="${note}" placeholder="Note..." oninput="setWN('${id}',this.value)"></td></tr>`;
+    }).join('');
+    shH=Math.round(shH*10)/10;
+    const aL=ids.every(id=>(D.out[sh.id]||{})[id]);const hS=ids.some(id=>(D.out[sh.id]||{})[id]);
+    return`<div class="show-section" style="border-color:${aL&&ids.length?'var(--green)':hS?'var(--amber)':'var(--border)'}">
+      <div class="show-sec-hd"><div style="display:flex;align-items:center;gap:8px"><span class="show-code" style="background:${sh.bg};color:${sh.tc}">${sh.code}</span><span style="font-size:14px;font-weight:500">${sh.name}</span><span style="font-size:12px;color:var(--text2)">${ids.length} worker${ids.length!==1?'s':''}</span></div>
+      <div style="display:flex;align-items:center;gap:10px"><input class="budget-in" type="text" value="${bc}" placeholder="Budget code..." oninput="setBC('${sh.id}',this.value)"><span class="show-hrs-ttl" style="color:${sh.color}">${shH>0?shH+'h':'—'}</span></div></div>
+      <table class="pr-table"><thead><tr><th style="width:28%">Name</th><th class="c" style="width:10%">In</th><th class="c" style="width:14%">Out</th><th class="c" style="width:8%">Hrs</th><th style="width:40%">Notes</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+  }).join('');
+  const done=pend===0&&totW>0;
+  return`<div class="day-tabs">${dTabs()}</div><div class="summary-row">${stats}</div>
+  <div class="view-pad" style="padding-top:12px">${secs}</div>
+  <div class="recon-wrap"><div class="recon-row"><div><span style="font-size:13px;color:var(--text2)">Day total:&nbsp;<strong style="color:var(--text)">${logH}h logged</strong></span>${pend?`<span style="font-size:12px;color:var(--amber);margin-left:12px">${pend} still pending</span>`:''}</div><div style="display:flex;gap:8px"><button class="btn-sm" onclick="window.print()">Print</button><button class="${done?'btn-sm-red':'btn-sm'}" onclick="alert('Day saved!')">Save day</button></div></div>
+  <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${done?'var(--green)':'var(--red)'}"></div></div><div class="prog-lbls"><span>${pct}% logged</span><span>${logH}h / ${totP}h expected</span></div></div>`;
+}
+
+function bReport(){
+  const we=S.we,fl=S.rF||'all';
+  const fri=new Date(we+'T12:00:00');const sat=new Date(fri);sat.setDate(sat.getDate()-6);
+  const fd=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const dm={Sat:'sat',Sun:'sun',Mon:'mon',Tue:'tue',Wed:'wed',Thu:'thu',Fri:'fri'};
+  const wH={};ROSTER.forEach(w=>{wH[w.id]={sat:0,sun:0,mon:0,tue:0,wed:0,thu:0,fri:0};});
+  DAYS.forEach(day=>{const D=getDay(we,day);SHOWS.forEach(sh=>(D.asgn[sh.id]||[]).forEach(id=>{const h=hrs(wMap[id]?.in0,(D.out[sh.id]||{})[id]||null)||0;if(wH[id])wH[id][dm[day]]+=h;}));});
+  const rT=id=>Math.round(Object.values(wH[id]).reduce((s,h)=>s+h,0)*10)/10;
+  const active=ROSTER.filter(w=>{if(fl!=='all'&&w.type!==fl)return false;return rT(w.id)>0||DAYS.some(d=>Object.values(getDay(we,d).asgn).flat().includes(w.id));});
+  const stf=active.filter(w=>w.type==='staff');const cas=active.filter(w=>w.type==='casual');
+  let totW=0,totH=0;active.forEach(w=>{totW++;totH+=rT(w.id);});totH=Math.round(totH*10)/10;
+  const cT={sat:0,sun:0,mon:0,tue:0,wed:0,thu:0,fri:0};active.forEach(w=>Object.keys(cT).forEach(d=>cT[d]+=wH[w.id][d]));
+  const dHds=DAYS.map((d,i)=>{const dt=new Date(fri);dt.setDate(dt.getDate()-(6-i));return`<th>${d}<br><span style="font-weight:400;font-size:10px">${dt.toLocaleDateString('en-US',{month:'numeric',day:'numeric'})}</span></th>`;}).join('');
+  const rRows=ws=>ws.map(w=>{const h=wH[w.id];const tot=rT(w.id);const badge=w.badge?`<span class="w-badge badge-${w.badge}" style="vertical-align:middle">${w.badge}</span>`:'';const cells=DAYS.map(d=>h[dm[d]]>0?`<td>${Math.round(h[dm[d]]*10)/10}</td>`:`<td class="nil">—</td>`).join('');return`<tr><td class="nm">${w.name} ${badge}</td><td class="cd">${w.card||'—'}</td>${cells}<td class="tot">${tot>0?tot+'h':'—'}</td></tr>`;}).join('');
+  const gC=DAYS.map(d=>{const v=Math.round(cT[dm[d]]*10)/10;return v>0?`<td class="tot">${v}</td>`:`<td class="nil tot">—</td>`;}).join('');
+  const togs=['all','staff','casual'].map(v=>`<button class="tog-btn${fl===v?' on':''}" onclick="setRF('${v}')">${v==='all'?'All workers':v.charAt(0).toUpperCase()+v.slice(1)}</button>`).join('');
+  return`<div class="report-wrap"><div class="report-card">
+    <div class="report-hdr"><div class="report-org">IATSE LOCAL 1 &middot; STAGEHANDS UNION OF NEW YORK</div><div class="report-title">Weekly hours report</div><div class="report-meta">Combo Crew &nbsp;&middot;&nbsp; ${fd(sat)} \u2013 ${fd(fri)}</div>
+    <div class="report-metrics">${[{l:'Workers',v:totW},{l:'Hours logged',v:totH+'h'},{l:'Week ending',v:fd(fri)},{l:'Steward',v:S.user?.name||'—'}].map(c=>`<div class="stat-card"><div class="stat-lbl">${c.l}</div><div class="stat-val" style="font-size:18px">${c.v}</div></div>`).join('')}</div></div>
+    <div class="report-ctrl"><div class="tog-group">${togs}</div><div style="display:flex;gap:6px"><button class="btn-sm" onclick="window.print()">Print</button><button class="btn-sm-red" onclick="alert('In the real version, this emails the report to the union hall.')">Send to union</button></div></div>
+    <div class="r-table-wrap"><table class="r-table">
+      <colgroup><col style="width:22%"><col style="width:8%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:11%"></colgroup>
+      <thead><tr><th class="l">Name</th><th>Card #</th>${dHds}<th>Total</th></tr></thead>
+      <tbody>${stf.length?`<tr class="sec-hd"><td colspan="10">Staff</td></tr>${rRows(stf)}`:''}${cas.length?`<tr class="sec-hd"><td colspan="10">Casual / on-call</td></tr>${rRows(cas)}`:''}
+      <tr class="grand"><td class="nm" colspan="2">Week total</td>${gC}<td class="tot" style="font-size:15px">${totH}h</td></tr></tbody>
+    </table></div>
+    <div class="report-fn">Hours sourced from daily payroll entries. Pending out times excluded from totals.</div>
+    <div class="cert-block"><div class="cert-txt">I certify that the hours recorded above are accurate and complete to the best of my knowledge.</div>
+    <div class="cert-lines">${['Shop steward signature','Date submitted','Union rep verification'].map(l=>`<div><div class="cert-rule"></div><div class="cert-lbl">${l}</div></div>`).join('')}</div></div>
+  </div></div>`;
+}
+
+function selW(id){S.sel=S.sel===id?null:id;renderAll();}
+function doAssign(shId){if(!S.sel)return;const D=getDay(S.we,S.day);const all=new Set(Object.values(D.asgn).flat());if(!all.has(S.sel)){if(!D.asgn[shId])D.asgn[shId]=[];D.asgn[shId].push(S.sel);}S.sel=null;putDay(S.we,S.day,D);renderAll();}
+function unassign(shId,wid){const D=getDay(S.we,S.day);D.asgn[shId]=(D.asgn[shId]||[]).filter(x=>x!==wid);putDay(S.we,S.day,D);renderAll();}
+function setOut(shId,wid,val){const D=getDay(S.we,S.day);if(!D.out[shId])D.out[shId]={};D.out[shId][wid]=val||null;putDay(S.we,S.day,D);renderAll();}
+function setBC(shId,val){const D=getDay(S.we,S.day);if(!D.bc)D.bc={};D.bc[shId]=val;putDay(S.we,S.day,D);}
+function setWN(wid,val){const D=getDay(S.we,S.day);if(!D.notes)D.notes={};D.notes[wid]=val;putDay(S.we,S.day,D);}
+function saveNote(val){const D=getDay(S.we,S.day);D.dayNote=val;putDay(S.we,S.day,D);}
+function togAv(wid,checked){const D=getDay(S.we,S.day);D.av[wid]=checked;putDay(S.we,S.day,D);renderAll();}
+function toggleAP(){const el=document.getElementById('avail-list');if(el)el.style.display=el.style.display==='block'?'none':'block';}
+function setNeeded(shId,val){const D=getDay(S.we,S.day);if(!D.needed)D.needed={};D.needed[shId]=parseInt(val)||0;putDay(S.we,S.day,D);renderAll();}
+function setRF(f){S.rF=f;renderAll();}
+</script>
+</body>
+</html>
